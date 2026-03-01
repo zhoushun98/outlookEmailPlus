@@ -28,22 +28,13 @@ data/
 *.swo
 .kiro/
 
-# 测试文件（不开源）
-tests/
+# 测试缓存
 .pytest_cache/
 
-# 文档目录（不开源）
-docs/
+# 内部文档（不开源）
 PRD/
 我们的文档/
 img/
-
-# GitHub 配置（不开源）
-.github/
-
-# 项目文档（不开源）
-CONTRIBUTING.md
-SECURITY.md
 
 # Node.js
 node_modules/
