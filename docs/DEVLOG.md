@@ -1,5 +1,42 @@
 # DEVLOG（发布记录）
 
+## v1.3.0（2026-03-03）
+
+### 新增功能
+- **🎯 多邮箱统一管理系统（PRD-00005）**：在保持 Outlook 功能完全不变的前提下，支持 Gmail、QQ、163、126、Yahoo、阿里邮箱及自定义 IMAP 邮箱
+  - 统一界面管理多种邮箱类型（Outlook OAuth2 + IMAP 授权码）
+  - 支持 8 种邮箱提供商预设配置（自动填充 IMAP 服务器地址和端口）
+  - IMAP 授权码/应用专用密码加密存储（Fernet 加密）
+  - 智能文件夹映射（收件箱/垃圾邮件/已删除邮件）支持多语言和 UTF-7 编码
+  - 按提供商分类导出账号（Outlook/IMAP 分组，格式清晰）
+- **🔌 新增 IMAP 通用服务**：`imap_generic.py` 提供统一的 IMAP 连接、邮件列表、详情获取能力
+- **📦 邮箱提供商配置系统**：`providers.py` 集中维护 8 种邮箱的 IMAP 配置与文件夹映射规则
+- **🔍 验证码提取支持 IMAP**：IMAP 邮箱也可使用验证码提取功能
+- **🎨 前端动态表单**：添加账号时根据选择的邮箱类型动态显示不同的输入格式提示
+- **🏷️ 账号类型标识**：账号列表显示邮箱类型标签（Outlook/Gmail/QQ 等）
+- **📡 新增 API 接口**：`GET /api/providers` 返回支持的邮箱提供商列表
+
+### 修复
+- **数据库迁移安全性**：Schema v2 → v3 升级，新增 `account_type`、`provider`、`imap_host`、`imap_port`、`imap_password` 字段，保持向后兼容
+- **定时刷新任务过滤**：调度器只刷新 Outlook 账号，避免对 IMAP 账号执行无效的 Token 刷新操作
+- **IMAP 删除保护**：IMAP 邮箱禁止远程删除操作，返回友好提示信息
+
+### 重要变更
+- **数据库 Schema 升级至 v3**：accounts 表新增 5 个字段支持多邮箱类型
+- **账号导入格式扩展**：
+  - Outlook（保持不变）：`email----password----client_id----refresh_token`
+  - IMAP 预设提供商：`email----授权码----provider`
+  - IMAP 自定义：`email----密码----custom----imap_host----imap_port`
+- **邮件 API 路由分发**：根据 `account_type` 自动路由到 Graph API 或 IMAP 服务
+- **敏感数据加密扩展**：`imap_password` 纳入加密迁移逻辑
+- **架构文档完善**：新增 AGENTS.md、PRD/FD/TDD/TEST 完整文档体系
+
+### 测试/验证
+- **新增 355 行多邮箱测试**：`test_multi_mailbox.py` 覆盖 Schema v3、IMAP 导入、邮件获取、验证码提取、删除保护等核心场景
+- **回归测试通过**：所有现有 Outlook 功能保持不变，Graph API → IMAP XOAUTH2 回退路径正常
+- **数据库迁移验证**：v2 → v3 升级幂等性、加密字段迁移、旧数据兼容性验证通过
+- **IMAP 连接测试**：Gmail/QQ/163 文件夹映射、UTF-7 编码、授权码认证验证通过
+
 ## v1.2.1（2026-03-02）
 
 ### 新增功能
