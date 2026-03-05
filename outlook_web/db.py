@@ -18,8 +18,8 @@ from outlook_web.security.crypto import (
 
 # 数据库 Schema 版本（用于升级可验证/可诊断）
 # v3：对齐 PRD-00005 / FD-00005 / TDD-00005（accounts 表新增多邮箱字段：account_type/provider/imap_host/imap_port/imap_password）
-# v4：对齐 PRD-00007 / FD-00007（accounts 表新增 telegram_push_enabled/telegram_last_checked_at）
-DB_SCHEMA_VERSION = 4
+# v5：BUG-00011 P2 — Message-ID 去重防止重复推送
+DB_SCHEMA_VERSION = 5
 DB_SCHEMA_VERSION_KEY = "db_schema_version"
 DB_SCHEMA_LAST_UPGRADE_TRACE_ID_KEY = "db_schema_last_upgrade_trace_id"
 DB_SCHEMA_LAST_UPGRADE_ERROR_KEY = "db_schema_last_upgrade_error"
@@ -553,6 +553,31 @@ def init_db(database_path: Optional[str] = None):
             """
             CREATE INDEX IF NOT EXISTS idx_account_tags_tag_id
             ON account_tags(tag_id)
+            """
+        )
+
+        # v5: Telegram 推送去重日志（BUG-00011 P2）
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS telegram_push_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                account_id INTEGER NOT NULL,
+                message_id TEXT NOT NULL,
+                pushed_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now')),
+                UNIQUE(account_id, message_id)
+            )
+            """
+        )
+        cursor.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_telegram_push_log_account_id
+            ON telegram_push_log(account_id)
+            """
+        )
+        cursor.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_telegram_push_log_pushed_at
+            ON telegram_push_log(pushed_at)
             """
         )
 

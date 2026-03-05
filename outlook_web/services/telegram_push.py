@@ -183,6 +183,10 @@ def _fetch_new_emails_imap(account: dict, since: str) -> List[dict]:
                 )
 
                 sender = msg.get("From", "")
+                # 提取 Message-ID（BUG-00011 P2 去重用）
+                raw_message_id = msg.get("Message-ID", "") or msg.get("Message-Id", "")
+                if not raw_message_id:
+                    raw_message_id = f"imap:{account.get('email', '')}:{mid.decode() if isinstance(mid, bytes) else mid}"
                 date_str = msg.get("Date", "")
                 try:
                     from email.utils import parsedate_to_datetime
@@ -226,6 +230,7 @@ def _fetch_new_emails_imap(account: dict, since: str) -> List[dict]:
 
                 results.append(
                     {
+                        "message_id": raw_message_id.strip(),
                         "subject": subject,
                         "sender": sender,
                         "received_at": received_iso,
@@ -267,7 +272,7 @@ def _fetch_new_emails_graph(account: dict, since: str) -> List[dict]:
     params = {
         "$filter": f"receivedDateTime gt {since_z}",
         "$top": MAX_EMAILS_PER_FETCH,
-        "$select": "subject,from,receivedDateTime,bodyPreview",
+        "$select": "id,subject,from,receivedDateTime,bodyPreview,internetMessageId",
         "$orderby": "receivedDateTime asc",
     }
     headers = {"Authorization": f"Bearer {access_token}"}
@@ -285,8 +290,11 @@ def _fetch_new_emails_graph(account: dict, since: str) -> List[dict]:
             received_raw = item.get("receivedDateTime", "")
             received_iso = received_raw.replace("Z", "").split(".")[0] if received_raw else ""
             preview = (item.get("bodyPreview", "") or "")[:MAX_PREVIEW_LENGTH]
+            # BUG-00011 P2: 提取 Message-ID（优先 internetMessageId，回退 Graph id）
+            msg_id = item.get("internetMessageId", "") or item.get("id", "")
             results.append(
                 {
+                    "message_id": msg_id,
                     "subject": item.get("subject", ""),
                     "sender": sender,
                     "received_at": received_iso,
@@ -298,6 +306,45 @@ def _fetch_new_emails_graph(account: dict, since: str) -> List[dict]:
         raise
 
     return results
+
+
+# ---------------------------------------------------------------------------
+# Message-ID 去重（BUG-00011 P2）
+# ---------------------------------------------------------------------------
+
+PUSH_LOG_RETENTION_DAYS = 7  # 去重记录保留天数
+
+
+def _is_message_pushed(db, account_id: int, message_id: str) -> bool:
+    """检查该邮件是否已推送过。"""
+    row = db.execute(
+        "SELECT 1 FROM telegram_push_log WHERE account_id = ? AND message_id = ?",
+        (account_id, message_id),
+    ).fetchone()
+    return row is not None
+
+
+def _record_pushed_message(db, account_id: int, message_id: str) -> None:
+    """记录已推送的邮件 Message-ID。"""
+    try:
+        db.execute(
+            "INSERT OR IGNORE INTO telegram_push_log (account_id, message_id, pushed_at) VALUES (?, ?, ?)",
+            (account_id, message_id, datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")),
+        )
+        db.commit()
+    except Exception:
+        pass  # 去重失败不影响推送流程
+
+
+def _cleanup_push_log(db) -> None:
+    """清理超过 PUSH_LOG_RETENTION_DAYS 天的去重记录。"""
+    try:
+        from datetime import timedelta
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=PUSH_LOG_RETENTION_DAYS)).strftime("%Y-%m-%dT%H:%M:%S")
+        db.execute("DELETE FROM telegram_push_log WHERE pushed_at < ?", (cutoff,))
+        db.commit()
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -328,7 +375,7 @@ def _fetch_account_emails(account: dict) -> tuple:
 
 
 def run_telegram_push_job(app) -> None:
-    """主入口：并行轮询 → 推送 → 更新游标。由调度器调用。"""
+    """主入口：并行轮询 → 去重 → 推送 → 更新游标。由调度器调用。"""
     import time
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -336,6 +383,7 @@ def run_telegram_push_job(app) -> None:
     logger.info("[telegram_push] job started")
 
     with app.app_context():
+        from outlook_web.db import get_db
         from outlook_web.repositories.accounts import (
             get_telegram_push_accounts,
             update_telegram_cursor,
@@ -361,6 +409,9 @@ def run_telegram_push_job(app) -> None:
         from datetime import timedelta
         recency_cutoff = (datetime.now(timezone.utc) - timedelta(hours=PUSH_RECENCY_HOURS)).strftime("%Y-%m-%dT%H:%M:%S")
         sent_count = 0
+        dedup_skipped = 0
+
+        db = get_db()
 
         # 并行获取所有账号邮件
         fetch_results = []
@@ -381,7 +432,6 @@ def run_telegram_push_job(app) -> None:
                 continue
 
             # BUG-00011: 游标取 max(job_start_time, 最大 received_at)
-            # 防止邮件服务器时钟偏差 / fetch 窗口期间到达的邮件被重复推送
             max_received = max(
                 (em.get("received_at", "") for em in emails),
                 default="",
@@ -392,20 +442,33 @@ def run_telegram_push_job(app) -> None:
                 update_telegram_cursor(account["id"], new_cursor)
                 continue
 
+            account_id = account["id"]
             for em in sorted(emails, key=lambda e: e.get("received_at", "")):
                 if sent_count >= MAX_SENT_PER_JOB:
                     break
                 # 跳过超过 PUSH_RECENCY_HOURS 的旧邮件
                 if em.get("received_at", "") < recency_cutoff:
                     continue
+                # BUG-00011 P2: Message-ID 去重
+                msg_id = em.get("message_id", "")
+                if msg_id and _is_message_pushed(db, account_id, msg_id):
+                    dedup_skipped += 1
+                    continue
+
                 msg = _build_telegram_message(account["email"], em)
                 if _send_telegram_message(bot_token, chat_id, msg):
                     sent_count += 1
+                    if msg_id:
+                        _record_pushed_message(db, account_id, msg_id)
                     # 消息间延迟，防止 Telegram API 限流
                     if TELEGRAM_PUSH_DELAY_SEC > 0:
                         time.sleep(TELEGRAM_PUSH_DELAY_SEC)
 
             update_telegram_cursor(account["id"], new_cursor)
 
+        # 定期清理过期去重记录（>7 天）
+        _cleanup_push_log(db)
+
     elapsed = time.monotonic() - t0
-    logger.info("[telegram_push] job finished: sent=%d elapsed=%.1fs", sent_count, elapsed)
+    logger.info("[telegram_push] job finished: sent=%d dedup_skipped=%d elapsed=%.1fs",
+                sent_count, dedup_skipped, elapsed)

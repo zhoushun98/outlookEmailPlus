@@ -361,6 +361,7 @@ class TestRunTelegramPushJob(unittest.TestCase):
             db.execute("DELETE FROM accounts WHERE email LIKE '%@tgjob.com'")
             # 确保其他测试遗留的账号不干扰推送 job（关闭所有推送开关）
             db.execute("UPDATE accounts SET telegram_push_enabled = 0")
+            db.execute("DELETE FROM telegram_push_log")
             db.commit()
 
     def _set_settings(self, bot_token="test_token_12345678", chat_id="-12345"):
@@ -377,7 +378,9 @@ class TestRunTelegramPushJob(unittest.TestCase):
         run_telegram_push_job(self.app)
 
     def _make_email(self, received_at="2026-03-04T14:31:00"):
+        import uuid
         return {
+            "message_id": f"<{uuid.uuid4().hex}@test.com>",
             "subject": "Test",
             "sender": "s@test.com",
             "received_at": received_at,
@@ -963,6 +966,7 @@ class TestParallelJobBehavior(unittest.TestCase):
             db = get_db()
             db.execute("DELETE FROM accounts WHERE email LIKE '%@parallel.com'")
             db.execute("UPDATE accounts SET telegram_push_enabled = 0")
+            db.execute("DELETE FROM telegram_push_log")
             db.commit()
 
     def _set_settings(self, bot_token="test_token_12345678", chat_id="-12345"):
@@ -979,7 +983,9 @@ class TestParallelJobBehavior(unittest.TestCase):
         run_telegram_push_job(self.app)
 
     def _make_email(self, received_at="2026-03-04T14:31:00"):
+        import uuid
         return {
+            "message_id": f"<{uuid.uuid4().hex}@test.com>",
             "subject": "Test",
             "sender": "s@test.com",
             "received_at": received_at,
@@ -1147,6 +1153,7 @@ class TestCursorClockSkew(unittest.TestCase):
             db = get_db()
             db.execute("DELETE FROM accounts WHERE email LIKE '%@clockskew.com'")
             db.execute("UPDATE accounts SET telegram_push_enabled = 0")
+            db.execute("DELETE FROM telegram_push_log")
             db.commit()
 
     def _set_settings(self):
@@ -1172,6 +1179,7 @@ class TestCursorClockSkew(unittest.TestCase):
             from datetime import timedelta
             future_time = (datetime.now(timezone.utc) + timedelta(seconds=5)).strftime("%Y-%m-%dT%H:%M:%S")
             emails = [{
+                "message_id": "<future@example.com>",
                 "subject": "Clock skew email",
                 "sender": "s@test.com",
                 "received_at": future_time,
@@ -1204,6 +1212,7 @@ class TestCursorClockSkew(unittest.TestCase):
             from datetime import timedelta
             past_time = (datetime.now(timezone.utc) - timedelta(minutes=5)).strftime("%Y-%m-%dT%H:%M:%S")
             emails = [{
+                "message_id": "<past@example.com>",
                 "subject": "Normal email",
                 "sender": "s@test.com",
                 "received_at": past_time,
@@ -1238,6 +1247,7 @@ class TestCursorClockSkew(unittest.TestCase):
             from datetime import timedelta
             future_time = (datetime.now(timezone.utc) + timedelta(seconds=3)).strftime("%Y-%m-%dT%H:%M:%S")
             emails = [{
+                "message_id": "<skew-e2e@example.com>",
                 "subject": "Skew E2E",
                 "sender": "s@test.com",
                 "received_at": future_time,
@@ -1267,6 +1277,159 @@ class TestCursorClockSkew(unittest.TestCase):
 
             # 第二轮不应推送任何消息
             mock_send2.assert_not_called()
+
+
+class TestMessageIdDedup(unittest.TestCase):
+    """BUG-00011 P2: Message-ID 去重测试"""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.app = _get_app()
+
+    def setUp(self):
+        with self.app.app_context():
+            from outlook_web.db import get_db
+            db = get_db()
+            db.execute("DELETE FROM accounts WHERE email LIKE '%@dedup.com'")
+            db.execute("UPDATE accounts SET telegram_push_enabled = 0")
+            db.execute("DELETE FROM telegram_push_log")
+            db.commit()
+
+    def _set_settings(self):
+        from outlook_web.repositories.settings import set_setting
+        from outlook_web.security.crypto import encrypt_data
+        set_setting("telegram_bot_token", encrypt_data("test_token_12345678"))
+        set_setting("telegram_chat_id", "-12345")
+
+    def _run_job(self):
+        from outlook_web.services.telegram_push import run_telegram_push_job
+        run_telegram_push_job(self.app)
+
+    def test_same_message_id_not_pushed_twice(self):
+        """同一 message_id 的邮件在两轮 Job 中只推送 1 次"""
+        with self.app.app_context():
+            from outlook_web.db import get_db
+            db = get_db()
+            _insert_test_account(db, "dup@dedup.com", enabled=1,
+                                 last_checked="2026-03-01T00:00:00")
+            self._set_settings()
+
+            from datetime import timedelta
+            recent = (datetime.now(timezone.utc) - timedelta(minutes=2)).strftime("%Y-%m-%dT%H:%M:%S")
+            emails = [{
+                "message_id": "<unique123@mail.com>",
+                "subject": "Test dedup",
+                "sender": "s@test.com",
+                "received_at": recent,
+                "preview": "body",
+            }]
+
+            # 第一轮：推送成功
+            with patch("outlook_web.services.telegram_push._fetch_new_emails_imap", return_value=emails), \
+                 patch("outlook_web.services.telegram_push._send_telegram_message", return_value=True) as send1, \
+                 patch("outlook_web.services.telegram_push.TELEGRAM_PUSH_DELAY_SEC", 0):
+                self._run_job()
+            self.assertEqual(send1.call_count, 1)
+
+            # 验证 push_log 记录
+            row = db.execute(
+                "SELECT * FROM telegram_push_log WHERE message_id = ?", ("<unique123@mail.com>",)
+            ).fetchone()
+            self.assertIsNotNone(row)
+
+            # 第二轮：同一封邮件再次被 fetch（模拟游标未正确推进的极端场景）
+            with patch("outlook_web.services.telegram_push._fetch_new_emails_imap", return_value=emails), \
+                 patch("outlook_web.services.telegram_push._send_telegram_message", return_value=True) as send2, \
+                 patch("outlook_web.services.telegram_push.TELEGRAM_PUSH_DELAY_SEC", 0):
+                self._run_job()
+            # Message-ID 去重：不应再推送
+            send2.assert_not_called()
+
+    def test_different_message_ids_both_pushed(self):
+        """不同 message_id 的邮件各推送 1 次"""
+        with self.app.app_context():
+            from outlook_web.db import get_db
+            db = get_db()
+            _insert_test_account(db, "multi@dedup.com", enabled=1,
+                                 last_checked="2026-03-01T00:00:00")
+            self._set_settings()
+
+            from datetime import timedelta
+            recent = (datetime.now(timezone.utc) - timedelta(minutes=2)).strftime("%Y-%m-%dT%H:%M:%S")
+            emails = [
+                {"message_id": "<aaa@mail.com>", "subject": "A", "sender": "s@t.com",
+                 "received_at": recent, "preview": "a"},
+                {"message_id": "<bbb@mail.com>", "subject": "B", "sender": "s@t.com",
+                 "received_at": recent, "preview": "b"},
+            ]
+
+            with patch("outlook_web.services.telegram_push._fetch_new_emails_imap", return_value=emails), \
+                 patch("outlook_web.services.telegram_push._send_telegram_message", return_value=True) as mock_send, \
+                 patch("outlook_web.services.telegram_push.TELEGRAM_PUSH_DELAY_SEC", 0):
+                self._run_job()
+            self.assertEqual(mock_send.call_count, 2)
+
+    def test_push_log_cleanup(self):
+        """过期记录（>7 天）应被清理"""
+        with self.app.app_context():
+            from outlook_web.db import get_db
+            db = get_db()
+            _insert_test_account(db, "clean@dedup.com", enabled=1,
+                                 last_checked="2026-03-01T00:00:00")
+            self._set_settings()
+
+            # 插入一条旧记录和一条新记录
+            db.execute(
+                "INSERT INTO telegram_push_log (account_id, message_id, pushed_at) VALUES (?, ?, ?)",
+                (999, "<old@mail.com>", "2026-01-01T00:00:00"),
+            )
+            db.execute(
+                "INSERT INTO telegram_push_log (account_id, message_id, pushed_at) VALUES (?, ?, ?)",
+                (999, "<new@mail.com>", datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")),
+            )
+            db.commit()
+
+            # 运行 job 触发 cleanup
+            with patch("outlook_web.services.telegram_push._fetch_new_emails_imap", return_value=[]), \
+                 patch("outlook_web.services.telegram_push._send_telegram_message", return_value=True), \
+                 patch("outlook_web.services.telegram_push.TELEGRAM_PUSH_DELAY_SEC", 0):
+                self._run_job()
+
+            # 旧记录应被清理
+            old = db.execute(
+                "SELECT 1 FROM telegram_push_log WHERE message_id = ?", ("<old@mail.com>",)
+            ).fetchone()
+            self.assertIsNone(old, "超过 7 天的记录应被清理")
+
+            # 新记录应保留
+            new = db.execute(
+                "SELECT 1 FROM telegram_push_log WHERE message_id = ?", ("<new@mail.com>",)
+            ).fetchone()
+            self.assertIsNotNone(new, "7 天内的记录应保留")
+
+    def test_email_without_message_id_still_pushed(self):
+        """缺少 message_id 的邮件仍然正常推送（降级到仅游标防重）"""
+        with self.app.app_context():
+            from outlook_web.db import get_db
+            db = get_db()
+            _insert_test_account(db, "nomsgid@dedup.com", enabled=1,
+                                 last_checked="2026-03-01T00:00:00")
+            self._set_settings()
+
+            from datetime import timedelta
+            recent = (datetime.now(timezone.utc) - timedelta(minutes=2)).strftime("%Y-%m-%dT%H:%M:%S")
+            emails = [{
+                "subject": "No Message-ID",
+                "sender": "s@test.com",
+                "received_at": recent,
+                "preview": "body",
+            }]  # 注意：没有 message_id 字段
+
+            with patch("outlook_web.services.telegram_push._fetch_new_emails_imap", return_value=emails), \
+                 patch("outlook_web.services.telegram_push._send_telegram_message", return_value=True) as mock_send, \
+                 patch("outlook_web.services.telegram_push.TELEGRAM_PUSH_DELAY_SEC", 0):
+                self._run_job()
+            mock_send.assert_called_once()
 
 
 if __name__ == "__main__":
