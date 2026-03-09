@@ -86,7 +86,9 @@ class ExternalApiBaseTest(unittest.TestCase):
         }
 
     @staticmethod
-    def _graph_detail(message_id: str = "msg-1", body_text: str = "Your code is 123456", html_text: str = "<p>Your code is 123456</p>"):
+    def _graph_detail(
+        message_id: str = "msg-1", body_text: str = "Your code is 123456", html_text: str = "<p>Your code is 123456</p>"
+    ):
         return {
             "id": message_id,
             "subject": "Your verification code",

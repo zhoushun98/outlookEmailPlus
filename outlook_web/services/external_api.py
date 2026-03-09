@@ -137,21 +137,13 @@ def _build_message_summary(email_addr: str, item: Dict[str, Any], *, method: str
     subject = str(item.get("subject") or "无主题")
 
     created_at_raw = (
-        item.get("receivedDateTime")
-        or item.get("date")
-        or item.get("created_at")
-        or item.get("received_at")
-        or ""
+        item.get("receivedDateTime") or item.get("date") or item.get("created_at") or item.get("received_at") or ""
     )
     created_dt = _parse_datetime(str(created_at_raw))
     created_at, timestamp = _format_datetime(created_dt, str(created_at_raw))
 
     content_preview = str(
-        item.get("bodyPreview")
-        or item.get("body_preview")
-        or item.get("content_preview")
-        or item.get("bodyPreview")
-        or ""
+        item.get("bodyPreview") or item.get("body_preview") or item.get("content_preview") or item.get("bodyPreview") or ""
     )
 
     is_read = bool(item.get("isRead") if "isRead" in item else item.get("is_read") or item.get("isRead") or False)

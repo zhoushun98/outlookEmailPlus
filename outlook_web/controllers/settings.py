@@ -123,7 +123,11 @@ def api_update_settings() -> Any:
     if "external_api_key" in data:
         new_external_api_key = str(data["external_api_key"] or "").strip()
         existing_external_api_key = settings_repo.get_external_api_key()
-        if new_external_api_key and existing_external_api_key and new_external_api_key == _mask_secret_value(existing_external_api_key):
+        if (
+            new_external_api_key
+            and existing_external_api_key
+            and new_external_api_key == _mask_secret_value(existing_external_api_key)
+        ):
             updated.append("对外 API Key（未变更）")
         elif new_external_api_key:
             encrypted_key = encrypt_data(new_external_api_key)
