@@ -1,5 +1,41 @@
 # DEVLOG
 
+## v1.10.0 - OAuth 回归修复与认证后工作区重构
+
+发布日期：2026-03-26
+
+### 新增功能
+
+- 新增认证后主应用 `workspace` 语义化布局与 `ui_layout_v2` 持久化能力，支持侧栏折叠、拖拽宽度、移动端响应式以及旧本地布局数据自动迁移。
+- 新增 Outlook OAuth 回调页与回调路由注册，前端可直接处理 `code`、`state`、错误参数及来源校验结果，降低 OAuth 导入链路的人工兜底成本。
+- 新增账号备注轻量编辑 `PATCH` 接口，标准列表与紧凑模式都可以单独更新备注，不再要求提交完整账号凭据。
+- 新增外部邮箱池对接收口后的回归覆盖，围绕 `/api/external/pool/*`、账号类型建议与通知分发补齐了一批契约测试与流程测试。
+
+### 修复
+
+- 修复 Outlook OAuth 回调、CSRF 恢复、verify-token 绑定和重试后回跳流程中的多处回归问题，避免导入链路因旧前端参数或异常回调而中断。
+- 修复通知分发、Telegram 推送参与判定、临时邮箱内联图片刷新以及刷新失败提示文案不一致的问题，恢复主流程的可观测性和前端反馈一致性。
+- 修复认证后简洁模式回归，恢复账号摘要列、分组交互、紧凑布局样式、多语言文案以及备注弹窗流程。
+- 修复多 Key 鉴权场景下旧版 `external_api_key` 优先级异常，避免陈旧多 Key 配置覆盖仍在使用的单 Key 鉴权。
+
+### 重要变更
+
+- 版本号从 `1.9.2` 提升到 `1.10.0`，应用 UI、系统接口和对外 API 返回的版本信息继续由 `outlook_web.__version__` 统一驱动。
+- 内部匿名 `/api/pool/*` 路径相关测试与前端契约已彻底收口到受控外部接口 `/api/external/pool/*`，后续集成方应以外部池协议为准。
+- 当前仓库仍不是 Tauri 工程，不包含 `Cargo.toml`、`package.json`、MSI 或 NSIS 构建链路；本次正式产物继续沿用 Docker 镜像 tar 与源码 zip。
+
+### 测试/验证
+
+- 自动化测试：`python -m unittest discover -s tests -v`
+  - 结果：`Ran 644 tests in 125.575s`
+  - 状态：全部通过
+- 构建验证：`docker build -t outlook-email-plus:v1.10.0 .`
+  - 状态：成功
+  - 镜像摘要：`sha256:7563be074c157e3273c8fc7aa557bda2ce5e5944a3a0a285ad0125bc559ece73`
+- 发布产物：
+  - `dist/outlook-email-plus-v1.10.0-docker.tar`
+  - `dist/outlookEmailPlus-v1.10.0-src.zip`
+
 ## v1.9.2 - 紧凑模式发布与刷新提示增强
 
 发布日期：2026-03-24

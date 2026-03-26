@@ -38,7 +38,7 @@ The repository already includes some screenshots, and more can be added later.
 
 Highlights include:
 
-- current stable version: `v1.9.2`
+- current stable version: `v1.10.0`
 - a new compact mailbox mode for higher-density account operations with synchronized selection state
 - a lightweight remark-edit flow that updates remarks through a dedicated `PATCH` endpoint without touching credentials
 - richer temp-mail rendering with support for `cid:` inline images, data URLs, and remote image URLs
@@ -83,7 +83,7 @@ web_outlook_app.py    Backward-compatible entrypoint
 ### Docker Deployment
 
 ```bash
-docker pull guangshanshui/outlook-email-plus:v1.9.2
+docker pull guangshanshui/outlook-email-plus:v1.10.0
 docker pull guangshanshui/outlook-email-plus:latest
 
 docker run -d \
@@ -93,14 +93,14 @@ docker run -d \
   -e SECRET_KEY=your-secret-key-here \
   -e LOGIN_PASSWORD=your-login-password \
   -e ALLOW_LOGIN_PASSWORD_CHANGE=false \
-  guangshanshui/outlook-email-plus:v1.9.2
+  guangshanshui/outlook-email-plus:v1.10.0
 ```
 
 Notes:
 
 - always mount `data/` to avoid losing the database and runtime data
 - `SECRET_KEY` must stay stable and strong; a random 64-character value is recommended
-- for production deployments, pin an explicit version tag such as `v1.9.2`; keep `latest` for quick evaluation
+- for production deployments, pin an explicit version tag such as `v1.10.0`; keep `latest` for quick evaluation
 
 ### Local Run
 
