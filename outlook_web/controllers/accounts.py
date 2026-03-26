@@ -244,7 +244,9 @@ def api_add_account() -> Any:
     add_to_pool = _parse_bool_flag(data.get("add_to_pool"), default=False)
 
     if not account_str:
-        return build_error_response("ACCOUNT_IMPORT_INPUT_REQUIRED", "请输入账号信息", message_en="Please enter account information")
+        return build_error_response(
+            "ACCOUNT_IMPORT_INPUT_REQUIRED", "请输入账号信息", message_en="Please enter account information"
+        )
 
     # FD-00006: auto 模式允许 group_id=null（自动分组），需在分组校验前分流
     if provider == "auto":
@@ -378,7 +380,9 @@ def api_add_account() -> Any:
                         failed += 1
                         errors_total += 1
                         if len(errors) < max_error_details:
-                            errors.append({"line": line_no, "email": email_addr, "error": "custom IMAP 端口无效，应为 1-65535"})
+                            errors.append(
+                                {"line": line_no, "email": email_addr, "error": "custom IMAP 端口无效，应为 1-65535"}
+                            )
                         continue
                 elif len(parts) >= 4:
                     imap_host = (parts[2] or "").strip()
@@ -394,7 +398,9 @@ def api_add_account() -> Any:
                         failed += 1
                         errors_total += 1
                         if len(errors) < max_error_details:
-                            errors.append({"line": line_no, "email": email_addr, "error": "custom IMAP 端口无效，应为 1-65535"})
+                            errors.append(
+                                {"line": line_no, "email": email_addr, "error": "custom IMAP 端口无效，应为 1-65535"}
+                            )
                         continue
                 else:
                     imap_host = custom_imap_host
@@ -751,7 +757,9 @@ def _detect_line_type(
         prov = infer_provider_from_email(email)
         if prov:
             if prov == "outlook":
-                return _err("Outlook 两段格式不支持密码直连，请使用 4 段 OAuth 格式：邮箱----密码----client_id----refresh_token")
+                return _err(
+                    "Outlook 两段格式不支持密码直连，请使用 4 段 OAuth 格式：邮箱----密码----client_id----refresh_token"
+                )
             cfg = MAIL_PROVIDERS.get(prov, {})
             host = cfg.get("imap_host", "")
             port = int(cfg.get("imap_port", 993))
@@ -920,7 +928,9 @@ def _handle_auto_import(data: Dict[str, Any], *, add_to_pool: bool = False) -> A
         if explicit_group_id is not None:
             target_group = groups_repo.get_group_by_id(explicit_group_id)
             if not target_group:
-                return build_error_response("GROUP_NOT_FOUND", "指定的分组不存在", message_en="Target group not found", status=404)
+                return build_error_response(
+                    "GROUP_NOT_FOUND", "指定的分组不存在", message_en="Target group not found", status=404
+                )
             if target_group.get("is_system"):
                 return build_error_response(
                     "SYSTEM_GROUP_PROTECTED",
@@ -1274,7 +1284,9 @@ def _api_update_account_status(account_id: int, status: str) -> Any:
             )
         return jsonify({"success": True, "message": "状态更新成功"})
     except Exception:
-        return build_error_response("ACCOUNT_STATUS_UPDATE_FAILED", "更新失败", message_en="Failed to update account status", status=500)
+        return build_error_response(
+            "ACCOUNT_STATUS_UPDATE_FAILED", "更新失败", message_en="Failed to update account status", status=500
+        )
 
 
 @login_required
@@ -1407,7 +1419,9 @@ def api_batch_update_account_group() -> Any:
     group_id = data.get("group_id")
 
     if not account_ids:
-        return build_error_response("ACCOUNT_IDS_REQUIRED", "请选择要修改的账号", message_en="Please select the accounts to update")
+        return build_error_response(
+            "ACCOUNT_IDS_REQUIRED", "请选择要修改的账号", message_en="Please select the accounts to update"
+        )
 
     if not group_id:
         return build_error_response("GROUP_ID_REQUIRED", "请选择目标分组", message_en="Please select a target group")
@@ -1451,7 +1465,13 @@ def api_batch_update_account_group() -> Any:
             }
         )
     except Exception as e:
-        return build_error_response("ACCOUNT_GROUP_BATCH_UPDATE_FAILED", "批量移动分组失败", message_en="Failed to move accounts to the target group", status=500, details=str(e))
+        return build_error_response(
+            "ACCOUNT_GROUP_BATCH_UPDATE_FAILED",
+            "批量移动分组失败",
+            message_en="Failed to move accounts to the target group",
+            status=500,
+            details=str(e),
+        )
 
 
 @login_required
@@ -1702,7 +1722,9 @@ def api_export_all_accounts() -> Any:
     temp_emails = temp_emails_repo.load_temp_emails()
 
     if not accounts and not temp_emails:
-        return build_error_response("ACCOUNT_EXPORT_EMPTY", "没有邮箱账号", message_en="No mail accounts are available for export", status=404)
+        return build_error_response(
+            "ACCOUNT_EXPORT_EMPTY", "没有邮箱账号", message_en="No mail accounts are available for export", status=404
+        )
 
     # 记录审计日志
     log_audit("export", "all_accounts", None, f"导出所有账号，共 {len(accounts)} 个账号 + {len(temp_emails)} 个临时邮箱")
@@ -1741,7 +1763,9 @@ def api_export_selected_accounts() -> Any:
         return build_export_verify_failure_response(error_message)
 
     if not group_ids:
-        return build_error_response("GROUP_IDS_REQUIRED", "请选择要导出的分组", message_en="Please select at least one group to export")
+        return build_error_response(
+            "GROUP_IDS_REQUIRED", "请选择要导出的分组", message_en="Please select at least one group to export"
+        )
 
     # 获取选中分组下的所有账号（使用 load_accounts 自动解密）
     all_accounts = []

@@ -391,7 +391,6 @@ def api_external_account_status() -> Any:
     account_type = (account.get("account_type") or "outlook").strip().lower()
     provider = (account.get("provider") or account_type or "outlook").strip().lower()
     preferred_method = "imap_generic" if account_type == "imap" else "graph"
-    status = (account.get("status") or "active").strip().lower()
     can_read = external_api_service.can_account_read(account)
 
     data = {

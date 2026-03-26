@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import urllib.parse
 import secrets
+import urllib.parse
 from typing import Any
 
 import requests
@@ -385,8 +385,7 @@ def api_exchange_oauth_token() -> Any:
             "OAUTH_REDIRECT_URI_MISMATCH",
             f"微软拒绝了当前 redirect_uri。请在 Azure 应用中注册 {oauth_redirect_uri}，并确保页面使用这个地址完成授权。",
             message_en=(
-                "Microsoft rejected the redirect_uri. "
-                f"Register {oauth_redirect_uri} in Azure and use it for authorization"
+                "Microsoft rejected the redirect_uri. " f"Register {oauth_redirect_uri} in Azure and use it for authorization"
             ),
             status=400,
             details=error_msg,

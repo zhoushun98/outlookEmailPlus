@@ -41,9 +41,9 @@ class FrontendAccountTypeContractTests(unittest.TestCase):
         self.assertIn("const supportsTokenRefresh = isRefreshableOutlookAccount(acc);", groups_js)
         self.assertIn("const isFailed = supportsTokenRefresh && acc.last_refresh_status === 'failed';", groups_js)
         self.assertIn("const defaultMethodLabel = supportsTokenRefresh ? 'Graph' : 'IMAP';", groups_js)
-        self.assertIn("let tokenBadge = `<span class=\"badge badge-gray\">IMAP</span>`;", groups_js)
+        self.assertIn('let tokenBadge = `<span class="badge badge-gray">IMAP</span>`;', groups_js)
         self.assertIn("if (supportsTokenRefresh) {", groups_js)
-        self.assertIn("<span class=\"account-api-tag\">${acc.method || defaultMethodLabel}</span>", groups_js)
+        self.assertIn('<span class="account-api-tag">${acc.method || defaultMethodLabel}</span>', groups_js)
 
     def test_group_refresh_error_button_passes_account_type_and_provider(self):
         client = self.app.test_client()

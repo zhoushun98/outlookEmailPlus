@@ -183,7 +183,9 @@ class V190FrontendContractTests(unittest.TestCase):
         self.assertIn("translateAppTextLocal('请选择分组...')", main_js)
         self.assertIn("translateAppTextLocal('通知')", groups_js)
         self.assertIn("translateAppTextLocal('点击关闭该邮箱通知参与')", groups_js)
-        self.assertIn("translateAppTextLocal(notificationEnabled ? '该邮箱通知参与（已开启）' : '开启该邮箱通知参与')", groups_js)
+        self.assertIn(
+            "translateAppTextLocal(notificationEnabled ? '该邮箱通知参与（已开启）' : '开启该邮箱通知参与')", groups_js
+        )
         self.assertIn("translateAppTextLocal('收件箱为空')", emails_js)
         self.assertIn("translateAppTextLocal('暂无邮件')", temp_emails_js)
 
@@ -195,9 +197,15 @@ class V190FrontendContractTests(unittest.TestCase):
 
         self.assertIn("✉️ Email 通知", index_html)
         self.assertIn("📬 Telegram 通知", index_html)
-        self.assertIn("这里只配置 Email 通知通道。普通邮箱需在账号列表开启通知后才会通过 Email 发送；临时邮箱按当前通知规则处理。启用后仅从新到达的邮件开始通知。", index_html)
+        self.assertIn(
+            "这里只配置 Email 通知通道。普通邮箱需在账号列表开启通知后才会通过 Email 发送；临时邮箱按当前通知规则处理。启用后仅从新到达的邮件开始通知。",
+            index_html,
+        )
         self.assertIn("这里只配置 Email 渠道的接收邮箱，不会让所有普通邮箱自动发送。", index_html)
-        self.assertIn("这里只配置 Telegram 通知通道。普通邮箱需在账号列表开启通知后才会通过 Telegram 发送；临时邮箱按当前通知规则处理。", index_html)
+        self.assertIn(
+            "这里只配置 Telegram 通知通道。普通邮箱需在账号列表开启通知后才会通过 Telegram 发送；临时邮箱按当前通知规则处理。",
+            index_html,
+        )
         self.assertNotIn("全局生效，覆盖普通邮箱和临时邮箱；仅从启用后新到达的邮件开始通知。", index_html)
         self.assertNotIn("只需填写接收邮箱，不暴露复杂邮件网关配置。关闭通知后可保留该邮箱。", index_html)
         self.assertIn("acc.notification_enabled !== undefined", groups_js)
@@ -300,7 +308,9 @@ class V190FrontendContractTests(unittest.TestCase):
         client = self.app.test_client()
         accounts_js = self._get_text(client, "/static/js/features/accounts.js")
         self.assertIn("clientIdInput.dataset.originalValue = acc.client_id || '';", accounts_js)
-        self.assertIn("const wantsToUpdateOutlookCredentials = !isImap && (hasClientIdChanged || !!refreshToken);", accounts_js)
+        self.assertIn(
+            "const wantsToUpdateOutlookCredentials = !isImap && (hasClientIdChanged || !!refreshToken);", accounts_js
+        )
         self.assertIn("if (wantsToUpdateOutlookCredentials && (!data.client_id || !data.refresh_token))", accounts_js)
         self.assertNotIn("if (!isImap && (!data.client_id || !data.refresh_token))", accounts_js)
 

@@ -201,9 +201,7 @@ def _fetch_new_emails_imap(account: dict, since: str, folder: str = "inbox") -> 
             raw_message = str(exc or "")
             lowered = raw_message.lower()
             if (account.get("provider") or "").strip().lower() == "outlook" and "basicauthblocked" in lowered:
-                raise RuntimeError(
-                    "Outlook.com 已阻止 Basic Auth（账号密码直连）；请将该账号改为 Outlook OAuth 导入"
-                ) from exc
+                raise RuntimeError("Outlook.com 已阻止 Basic Auth（账号密码直连）；请将该账号改为 Outlook OAuth 导入") from exc
             raise
         selected = False
         last_select_error = None

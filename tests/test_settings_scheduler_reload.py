@@ -52,9 +52,7 @@ class SettingsSchedulerReloadTests(unittest.TestCase):
 
         with patch("outlook_web.services.scheduler._configure_telegram_push_job") as configure_telegram, patch(
             "outlook_web.services.scheduler._configure_email_notification_job"
-        ) as configure_email, patch(
-            "outlook_web.services.scheduler._configure_probe_poll_job"
-        ), patch(
+        ) as configure_email, patch("outlook_web.services.scheduler._configure_probe_poll_job"), patch(
             "outlook_web.services.scheduler._configure_pool_maintenance_jobs"
         ):
             from outlook_web.services import scheduler as scheduler_service

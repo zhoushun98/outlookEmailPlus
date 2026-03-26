@@ -17,7 +17,9 @@ SAFE_INLINE_IMAGE_MIME_TYPES = {
     "image/x-icon",
 }
 
-_CID_SRC_RE = re.compile(r"""(?P<prefix>\bsrc\s*=\s*)(?P<quote>["']?)(?P<value>cid:(?:<[^"'<>]+>|[^"' >]+))(?P=quote)""", re.IGNORECASE)
+_CID_SRC_RE = re.compile(
+    r"""(?P<prefix>\bsrc\s*=\s*)(?P<quote>["']?)(?P<value>cid:(?:<[^"'<>]+>|[^"' >]+))(?P=quote)""", re.IGNORECASE
+)
 _CID_KEYS = ("cid", "content_id", "contentId", "content-id", "contentIdHeader")
 _DATA_URL_KEYS = ("data_url", "dataUrl", "content_data_url", "contentDataUrl")
 _URL_KEYS = ("url", "content_url", "contentUrl", "download_url", "downloadUrl", "src")
@@ -78,7 +80,9 @@ def build_inline_resource_map(payload: Any) -> Dict[str, str]:
                 continue
             cid = _first_non_empty(item, _CID_KEYS)
             disposition = str(item.get("disposition") or "").strip().lower()
-            is_inline = bool(item.get("is_inline") or item.get("isInline") or item.get("inline") or cid or disposition == "inline")
+            is_inline = bool(
+                item.get("is_inline") or item.get("isInline") or item.get("inline") or cid or disposition == "inline"
+            )
             if not is_inline:
                 continue
             _register_inline_resource(inline_resources, cid, _coerce_resource_src(item))
@@ -103,7 +107,9 @@ def score_temp_email_payload(payload: Any) -> int:
         score += 100
     if any(isinstance(payload_dict.get(key), list) and payload_dict.get(key) for key in _RESOURCE_COLLECTION_KEYS):
         score += 30
-    if isinstance(payload_dict.get("cid_map") or payload_dict.get("cidMap"), dict) and (payload_dict.get("cid_map") or payload_dict.get("cidMap")):
+    if isinstance(payload_dict.get("cid_map") or payload_dict.get("cidMap"), dict) and (
+        payload_dict.get("cid_map") or payload_dict.get("cidMap")
+    ):
         score += 30
 
     score += min(len(payload_dict), 20)

@@ -49,7 +49,14 @@ def api_get_emails(email_addr: str) -> Any:
     account = accounts_repo.get_account_by_email(email_addr)
 
     if not account:
-        return build_error_response("ACCOUNT_NOT_FOUND", "账号不存在", message_en="Account not found", err_type="NotFoundError", status=404, details=f"email={email_addr}")
+        return build_error_response(
+            "ACCOUNT_NOT_FOUND",
+            "账号不存在",
+            message_en="Account not found",
+            err_type="NotFoundError",
+            status=404,
+            details=f"email={email_addr}",
+        )
 
     folder = request.args.get("folder", "inbox")  # inbox, junkemail, deleteditems
     skip = int(request.args.get("skip", 0))
@@ -717,7 +724,9 @@ def _parse_external_common_args(*, default_since_minutes: int | None = None) -> 
     }
 
 
-def _resolve_external_error(exc: external_api_service.ExternalApiError, *, allow_nested_upstream: bool = False) -> dict[str, Any]:
+def _resolve_external_error(
+    exc: external_api_service.ExternalApiError, *, allow_nested_upstream: bool = False
+) -> dict[str, Any]:
     resolved_code = str(exc.code)
     resolved_message = str(exc.message)
     resolved_status = int(exc.status)

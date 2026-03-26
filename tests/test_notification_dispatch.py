@@ -354,15 +354,23 @@ class NotificationDispatchTests(unittest.TestCase):
             fetch_mock.assert_called_once()
             email_send.assert_called_once()
             telegram_send.assert_called_once()
-            rows = get_db().execute(
-                """
+            rows = (
+                get_db()
+                .execute(
+                    """
                 SELECT channel, status
                 FROM notification_delivery_logs
                 WHERE source_key = ?
                 ORDER BY channel ASC
                 """,
-                (notification_dispatch.build_source_key(notification_dispatch.SOURCE_ACCOUNT, "shared-fetch@example.com"),),
-            ).fetchall()
+                    (
+                        notification_dispatch.build_source_key(
+                            notification_dispatch.SOURCE_ACCOUNT, "shared-fetch@example.com"
+                        ),
+                    ),
+                )
+                .fetchall()
+            )
             self.assertEqual([(row["channel"], row["status"]) for row in rows], [("email", "sent"), ("telegram", "sent")])
 
     def test_active_channels_follow_shared_account_participation_rule(self):
@@ -376,7 +384,9 @@ class NotificationDispatchTests(unittest.TestCase):
             }
             source = {
                 "source_type": notification_dispatch.SOURCE_ACCOUNT,
-                "source_key": notification_dispatch.build_source_key(notification_dispatch.SOURCE_ACCOUNT, "model@example.com"),
+                "source_key": notification_dispatch.build_source_key(
+                    notification_dispatch.SOURCE_ACCOUNT, "model@example.com"
+                ),
                 "label": "model@example.com",
                 "account": account,
             }
@@ -622,9 +632,7 @@ class NotificationDispatchTests(unittest.TestCase):
             with patch(
                 "outlook_web.services.notification_dispatch.fetch_source_messages",
                 return_value=message,
-            ), patch(
-                "outlook_web.services.notification_dispatch.send_business_email_notification"
-            ) as email_send, patch(
+            ), patch("outlook_web.services.notification_dispatch.send_business_email_notification") as email_send, patch(
                 "outlook_web.services.notification_dispatch.send_business_telegram_notification"
             ) as telegram_send:
                 notification_dispatch.run_notification_dispatch_job(self.app)
@@ -1002,20 +1010,32 @@ class NotificationDispatchTests(unittest.TestCase):
                 telegram_push.run_telegram_push_job(self.app)
 
             telegram_send.assert_called_once()
-            rows = get_db().execute(
-                """
+            rows = (
+                get_db()
+                .execute(
+                    """
                 SELECT channel, status
                 FROM notification_delivery_logs
                 WHERE source_key = ?
                 ORDER BY channel ASC
                 """,
-                (notification_dispatch.build_source_key(notification_dispatch.SOURCE_ACCOUNT, "dual-channel@example.com"),),
-            ).fetchall()
+                    (
+                        notification_dispatch.build_source_key(
+                            notification_dispatch.SOURCE_ACCOUNT, "dual-channel@example.com"
+                        ),
+                    ),
+                )
+                .fetchall()
+            )
             self.assertEqual([(row["channel"], row["status"]) for row in rows], [("email", "failed"), ("telegram", "sent")])
-            legacy_row = get_db().execute(
-                "SELECT 1 FROM telegram_push_log WHERE account_id = ? AND message_id = ?",
-                (account_id, "<dual-message@example.com>"),
-            ).fetchone()
+            legacy_row = (
+                get_db()
+                .execute(
+                    "SELECT 1 FROM telegram_push_log WHERE account_id = ? AND message_id = ?",
+                    (account_id, "<dual-message@example.com>"),
+                )
+                .fetchone()
+            )
             self.assertIsNotNone(legacy_row)
 
     def test_legacy_outlook_imap_account_fetches_via_imap(self):
@@ -1024,7 +1044,9 @@ class NotificationDispatchTests(unittest.TestCase):
 
             source = {
                 "source_type": notification_dispatch.SOURCE_ACCOUNT,
-                "source_key": notification_dispatch.build_source_key(notification_dispatch.SOURCE_ACCOUNT, "legacy-outlook@example.com"),
+                "source_key": notification_dispatch.build_source_key(
+                    notification_dispatch.SOURCE_ACCOUNT, "legacy-outlook@example.com"
+                ),
                 "email": "legacy-outlook@example.com",
                 "label": "legacy-outlook@example.com",
                 "account": {

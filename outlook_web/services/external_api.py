@@ -835,7 +835,7 @@ def create_probe(
     _validate_probe_params(email_addr, timeout_seconds, poll_interval)
 
     # 检查账号是否存在
-    account = ensure_account_can_read(require_account(email_addr))
+    ensure_account_can_read(require_account(email_addr))
 
     probe_id = uuid.uuid4().hex
     now = datetime.now(timezone.utc)

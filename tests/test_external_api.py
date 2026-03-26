@@ -1235,7 +1235,9 @@ class ExternalApiMessageErrorTests(ExternalApiBaseTest):
         self.assertEqual(resp.get_json().get("code"), "PROXY_ERROR")
         audit_logs = self._external_audit_logs()
         self.assertTrue(audit_logs)
-        details = json.loads(audit_logs[-1]["details"]) if isinstance(audit_logs[-1]["details"], str) else audit_logs[-1]["details"]
+        details = (
+            json.loads(audit_logs[-1]["details"]) if isinstance(audit_logs[-1]["details"], str) else audit_logs[-1]["details"]
+        )
         self.assertEqual(details.get("code"), "PROXY_ERROR")
 
     @patch("outlook_web.services.external_api.get_email_detail_imap_generic_result")
@@ -1266,7 +1268,9 @@ class ExternalApiMessageErrorTests(ExternalApiBaseTest):
         self.assertEqual(resp.get_json().get("code"), "IMAP_AUTH_FAILED")
         audit_logs = self._external_audit_logs()
         self.assertTrue(audit_logs)
-        details = json.loads(audit_logs[-1]["details"]) if isinstance(audit_logs[-1]["details"], str) else audit_logs[-1]["details"]
+        details = (
+            json.loads(audit_logs[-1]["details"]) if isinstance(audit_logs[-1]["details"], str) else audit_logs[-1]["details"]
+        )
         self.assertEqual(details.get("code"), "IMAP_AUTH_FAILED")
 
     def test_messages_for_inactive_account_returns_403(self):

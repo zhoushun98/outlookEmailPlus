@@ -159,7 +159,9 @@ class AccountEditBrowserFlowTests(unittest.TestCase):
 
             page.locator("#toast-container .toast.success").filter(has_text="账号更新成功").wait_for(timeout=10000)
             page.wait_for_function("() => !document.getElementById('editAccountModal').classList.contains('show')")
-            page.locator(".account-card").filter(has_text=account["email"]).filter(has_text=new_remark).first.wait_for(timeout=10000)
+            page.locator(".account-card").filter(has_text=account["email"]).filter(has_text=new_remark).first.wait_for(
+                timeout=10000
+            )
 
             row = self._get_account_row(account["id"])
             self.assertIsNotNone(row)

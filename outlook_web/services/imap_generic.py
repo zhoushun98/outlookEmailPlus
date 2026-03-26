@@ -248,9 +248,7 @@ def get_emails_imap_generic(
             _LOGGER.info("imap_login_ok email=%s provider=%s", email_addr, provider)
         except imaplib.IMAP4.error as e:
             message = _normalize_imap_auth_error_message(str(e), provider=provider, imap_host=imap_host)
-            _LOGGER.warning(
-                "imap_login_failed email=%s provider=%s err=%s", email_addr, provider, message
-            )
+            _LOGGER.warning("imap_login_failed email=%s provider=%s err=%s", email_addr, provider, message)
             return {
                 "success": False,
                 "error": build_error_payload(

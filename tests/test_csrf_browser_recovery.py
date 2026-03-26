@@ -113,12 +113,10 @@ class CsrfBrowserRecoveryTests(unittest.TestCase):
             page.wait_for_load_state("networkidle")
             page.locator('.nav-item[data-page="mailbox"]').click()
             page.wait_for_load_state("networkidle")
-            page.wait_for_function(
-                """() => {
+            page.wait_for_function("""() => {
                     const select = document.getElementById('importGroupSelect');
                     return select && select.options.length > 0;
-                }"""
-            )
+                }""")
             account_post_statuses.clear()
             csrf_token_request_count = 0
 

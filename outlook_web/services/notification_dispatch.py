@@ -175,7 +175,9 @@ def _fetch_account_messages(source: dict[str, Any], since: str) -> list[dict[str
                 enriched["folder"] = folder
                 emails.append(enriched)
         except Exception as exc:
-            logger.warning("[notification_dispatch] account fetch failed source=%s folder=%s err=%s", source["label"], folder, exc)
+            logger.warning(
+                "[notification_dispatch] account fetch failed source=%s folder=%s err=%s", source["label"], folder, exc
+            )
             raise
     return emails
 
@@ -466,7 +468,9 @@ def _build_active_channels_for_source(
         active_channels.append(
             (
                 CHANNEL_TELEGRAM,
-                lambda current_source, message, bot_token=telegram_runtime["bot_token"], chat_id=telegram_runtime["chat_id"]: send_business_telegram_notification(  # noqa: E731
+                lambda current_source, message, bot_token=telegram_runtime["bot_token"], chat_id=telegram_runtime[
+                    "chat_id"
+                ]: send_business_telegram_notification(  # noqa: E731
                     current_source,
                     message,
                     bot_token=bot_token,

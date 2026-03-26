@@ -60,7 +60,9 @@ class OAuthFlowTests(unittest.TestCase):
         self.assertTrue(query.get("state", [""])[0])
         self.assertNotEqual(query.get("state", [""])[0], "12345")
 
-    @patch("outlook_web.controllers.oauth.config.get_oauth_redirect_uri", return_value="https://prod.example.com/oauth/callback")
+    @patch(
+        "outlook_web.controllers.oauth.config.get_oauth_redirect_uri", return_value="https://prod.example.com/oauth/callback"
+    )
     @patch("outlook_web.controllers.oauth.config.get_oauth_client_id", return_value="client-from-config")
     def test_oauth_auth_url_returns_redirect_warning_when_origin_differs(self, _mock_client_id, _mock_redirect_uri):
         client = self.app.test_client()
